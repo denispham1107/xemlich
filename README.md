@@ -1,6 +1,6 @@
 # Xuất Google Calendar ra Excel + Google Maps
 
-Website tĩnh dùng **Google Calendar API bằng API Key** để đọc danh sách lịch hẹn trong một Google Calendar công khai/public, tự nhận diện địa chỉ khách trong lịch hẹn, dùng **Google Maps JavaScript API + DirectionsService** để tính thời gian/quãng đường đi và về từ cửa hàng, sau đó xuất toàn bộ dữ liệu ra file Excel `.xlsx` bằng SheetJS.
+Website tĩnh dùng **Google Calendar API bằng API Key** để đọc danh sách lịch hẹn trong một Google Calendar công khai/public, tự nhận diện địa chỉ khách trong lịch hẹn, dùng **Google Maps JavaScript API + DirectionsService** để tính thời gian/quãng đường đi và về từ cửa hàng, sau đó xuất toàn bộ dữ liệu ra file Excel `.xlsx` bằng SheetJS. Lưu ý: DirectionsService cần bật thêm **Directions API (Legacy)** trong cùng project Google Cloud.
 
 Website chạy hoàn toàn bằng:
 
@@ -115,12 +115,22 @@ calendar-maps-exporter
 
 Dùng cùng project với Google Calendar API hoặc tạo project mới.
 
-### Bước 2: Bật Maps JavaScript API
+### Bước 2: Bật Maps JavaScript API và Directions API (Legacy)
 
 1. Vào **APIs & Services**.
 2. Chọn **Library**.
 3. Tìm **Maps JavaScript API**.
 4. Bấm **Enable**.
+5. Quay lại **Library**.
+6. Tìm **Directions API** hoặc **Directions API (Legacy)**.
+7. Bấm **Enable**.
+
+Nếu dùng Google Cloud CLI, có thể chạy:
+
+```bash
+gcloud services enable maps-backend.googleapis.com --project=quanlycuahang-d3ab7
+gcloud services enable directions-backend.googleapis.com --project=quanlycuahang-d3ab7
+```
 
 ### Bước 3: Kiểm tra billing
 
@@ -145,8 +155,9 @@ Nếu dùng chung một key, phần API restrictions cần cho phép:
 
 - Google Calendar API
 - Maps JavaScript API
+- Directions API / Directions API (Legacy)
 
-Nếu dùng riêng, key Calendar chỉ cho Google Calendar API, key Maps chỉ cho Maps JavaScript API.
+Nếu dùng riêng, key Calendar chỉ cho Google Calendar API, key Maps cần cho Maps JavaScript API và Directions API / Directions API (Legacy).
 
 ## Cách bảo mật API Key
 
@@ -194,6 +205,7 @@ Nếu là Maps API Key, chọn:
 
 ```text
 Maps JavaScript API
+Directions API / Directions API (Legacy)
 ```
 
 Nếu dùng chung một API Key cho cả hai, chọn cả:
@@ -201,6 +213,7 @@ Nếu dùng chung một API Key cho cả hai, chọn cả:
 ```text
 Google Calendar API
 Maps JavaScript API
+Directions API / Directions API (Legacy)
 ```
 
 Bấm **Save**.
@@ -319,6 +332,18 @@ Các cột trong Excel:
 - Trạng thái
 - Link Google Calendar
 
+## Cách ghi tiêu đề lịch để Maps nhận địa chỉ tốt hơn
+
+Website đã cố gắng tự lọc ngày, giờ, số điện thoại, Zalo/Facebook và tên khách ra khỏi tiêu đề. Tuy vậy, để Google Maps tính đường chính xác hơn, nên ghi địa chỉ theo một trong các kiểu sau:
+
+```text
+Đón bé Miu - 294 Đoàn Văn Bơ, Phường 10, Quận 4, TPHCM
+Spa bé Bông | 32/51 Cao Thắng, Quận 3, TPHCM
+Khách Lan - địa chỉ: 14/4 Phạm Thế Hiển, Phường 1, Quận 8, TPHCM
+```
+
+Nên tránh để số điện thoại, tên Facebook/Zalo nằm liền sau địa chỉ. Nếu cần ghi thêm thông tin liên hệ, hãy xuống dòng hoặc ghi sau từ khóa `SĐT:`/`Zalo:` để website dễ tự lọc.
+
 ## Troubleshooting
 
 ### Lỗi Calendar 403
@@ -356,6 +381,7 @@ Nguyên nhân thường gặp:
 
 - Google Maps API Key sai.
 - Chưa bật Maps JavaScript API.
+- Chưa bật Directions API / Directions API (Legacy).
 - Chưa bật billing.
 - API key bị restrict sai domain.
 - Trình duyệt chặn script từ Google.
@@ -364,6 +390,7 @@ Cách xử lý:
 
 - Kiểm tra API key.
 - Kiểm tra Maps JavaScript API đã Enable.
+- Kiểm tra Directions API / Directions API (Legacy) đã Enable.
 - Kiểm tra billing account.
 - Kiểm tra HTTP referrers.
 
@@ -390,8 +417,9 @@ Nguyên nhân thường gặp:
 
 - API key bị từ chối.
 - Chưa bật Maps JavaScript API.
+- Chưa bật Directions API / Directions API (Legacy).
 - Chưa bật billing.
-- API restrictions không cho Maps JavaScript API.
+- API restrictions không cho Maps JavaScript API hoặc Directions API.
 
 ### OVER_QUERY_LIMIT
 

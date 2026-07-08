@@ -401,46 +401,164 @@ function loadGoogleMapsScript(apiKey) {
   return state.mapsScriptPromise;
 }
 
+function removeContactNoise(text) {
+  return cleanText(text)
+    .replace(/\b(?:0|\+84)\d{8,10}\b/g, ' ')
+    .replace(/\b(?:zalo|fb|facebook|sđt|sdt|đt|dt|phone|tel|liên hệ|lien he)\b.*$/i, ' ')
+    .replace(/\b(?:anh|chị|chi|cô|co|chú|chu|bạn|ban|khách|khach)\s+[A-ZÀ-Ỹ][A-Za-zÀ-ỹ]*(?:\s+[A-ZÀ-Ỹ][A-Za-zÀ-ỹ]*){0,3}\s*$/i, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normalizeAddressAbbreviations(text) {
+  return cleanText(text)
+    .replace(/\bF\s*(\d{1,2})\b/gi, 'Phường $1')
+    .replace(/\bP\s*(\d{1,2})\b/gi, 'Phường $1')
+    .replace(/\bQ\s*(\d{1,2})\b/gi, 'Quận $1')
+    .replace(/\bQ\.\s*(\d{1,2})\b/gi, 'Quận $1')
+    .replace(/\bTP\.\s*HCM\b/gi, 'Thành phố Hồ Chí Minh')
+    .replace(/\bTPHCM\b/gi, 'Thành phố Hồ Chí Minh')
+    .replace(/\bHCM\b/gi, 'Thành phố Hồ Chí Minh')
+    .replace(/\bSG\b/gi, 'Thành phố Hồ Chí Minh')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function trimAfterKnownAddressEnd(text) {
+  let result = cleanText(text);
+
+  const endPatterns = [
+    /^(.*?\b(?:Thành phố Hồ Chí Minh|Hồ Chí Minh|TPHCM|TP\.\s*HCM|HCM)\b).*$/i,
+    /^(.*?\b(?:Quận|Quan|Q)\s*\d{1,2}\b).*$/i,
+    /^(.*?\b(?:Phú Nhuận|Phu Nhuan|Bình Thạnh|Binh Thanh|Gò Vấp|Go Vap|Tân Bình|Tan Binh|Tân Phú|Tan Phu|Bình Tân|Binh Tan|Thủ Đức|Thu Duc|Bình Chánh|Binh Chanh|Nhà Bè|Nha Be|Hóc Môn|Hoc Mon|Củ Chi|Cu Chi)\b).*$/i,
+  ];
+
+  for (const pattern of endPatterns) {
+    const match = result.match(pattern);
+    if (match?.[1] && match[1].length >= 6) {
+      result = match[1];
+      break;
+    }
+  }
+
+  return result.replace(/[.;,\-\|\s]+$/, '').trim();
+}
+
+function removeLeadingScheduleBeforeAddress(text) {
+  let result = cleanText(text);
+
+  // Bỏ các cụm ngày/giờ đứng trước địa chỉ, ví dụ: "9/7-13/7 32/51 Cao Thắng".
+  result = result.replace(/^\s*\d{1,2}\s*h\s*(?:\d{1,2})?\s+/i, '');
+  result = result.replace(/^\s*\d{1,2}:\d{2}\s+/i, '');
+  result = result.replace(/^\s*\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\s*[-–—]\s*\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\s*/i, '');
+  result = result.replace(/^\s*\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\s+(?=\d{1,5}(?:[\/.-]\d{1,5})?\s+[A-Za-zÀ-ỹ])/i, '');
+
+  // Nếu còn cụm ngày + số nhà, lấy từ số nhà thật ở phía sau.
+  result = result.replace(/^\s*\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\s+(\d{1,5}(?:[\/.-]\d{1,5})?\s+[A-Za-zÀ-ỹ].*)$/i, '$1');
+
+  return result.trim();
+}
+
+function cleanAddressCandidate(address) {
+  let result = removeContactNoise(address)
+    .replace(/^[:：,\-\|\s]+/, '')
+    .replace(/[.;,\s]+$/, '')
+    .trim();
+
+  result = removeLeadingScheduleBeforeAddress(result);
+  result = trimAfterKnownAddressEnd(result);
+  result = normalizeAddressAbbreviations(result);
+
+  return result
+    .replace(/\s+/g, ' ')
+    .replace(/[.;,\s]+$/, '')
+    .trim();
+}
+
+function scoreAddressCandidate(candidate) {
+  const text = cleanText(candidate);
+  if (!text) return -100;
+
+  let score = 0;
+  if (/^\d{1,5}(?:[\/.-]\d{1,5})?\s+[A-Za-zÀ-ỹ]/.test(text)) score += 40;
+  if (/\b(?:đường|duong|hẻm|hem|quốc lộ|quoc lo|đại lộ|dai lo|cư xá|cu xa)\b/i.test(text)) score += 10;
+  if (/\b(?:Phường|Phuong|P)\s*\d{1,2}\b/i.test(text)) score += 15;
+  if (/\b(?:Quận|Quan|Q)\s*\d{1,2}\b/i.test(text)) score += 25;
+  if (/\b(?:Thành phố Hồ Chí Minh|Hồ Chí Minh|TPHCM|HCM|Phú Nhuận|Bình Thạnh|Gò Vấp|Tân Bình|Tân Phú|Thủ Đức)\b/i.test(text)) score += 20;
+  if (/\b(?:zalo|fb|facebook|sđt|sdt|phone|hotel|spa|gửi|gui|đón|don|ship)\b/i.test(text)) score -= 20;
+  if (text.length > 120) score -= 25;
+  if (text.length < 6) score -= 50;
+
+  return score;
+}
+
+function getAddressCandidatesFromText(text) {
+  const source = removeContactNoise(text);
+  if (!source) return [];
+
+  const candidates = [];
+  const numberRegex = /\b\d{1,5}(?:[\/.-]\d{1,5})?\b/g;
+  let match;
+
+  while ((match = numberRegex.exec(source)) !== null) {
+    let candidate = source.slice(match.index, match.index + 160);
+    candidate = candidate.split(/\s{3,}|[|;]/)[0] || candidate;
+    candidate = cleanAddressCandidate(candidate);
+
+    const score = scoreAddressCandidate(candidate);
+    if (score > 0) {
+      candidates.push({ address: candidate, score });
+    }
+  }
+
+  const unique = new Map();
+  for (const item of candidates) {
+    const key = item.address.toLowerCase();
+    if (!unique.has(key) || unique.get(key).score < item.score) {
+      unique.set(key, item);
+    }
+  }
+
+  return [...unique.values()]
+    .sort((a, b) => b.score - a.score || a.address.length - b.address.length)
+    .map((item) => item.address);
+}
+
 function extractCustomerAddress(summary, location) {
-  const locationText = cleanText(location);
+  const locationText = cleanAddressCandidate(location);
   if (locationText) return locationText;
 
   const title = cleanText(summary);
   if (!title) return '';
 
   const keywordMatch = title.match(/(?:địa\s*chỉ|dia\s*chi|address)\s*[:：-]\s*(.+)$/i);
-  if (keywordMatch?.[1]) return cleanAddressCandidate(keywordMatch[1]);
+  if (keywordMatch?.[1]) {
+    const keywordAddress = cleanAddressCandidate(keywordMatch[1]);
+    if (keywordAddress) return keywordAddress;
+  }
 
   const delimiterParts = title.split(/\s+(?:-|\|)\s+/).map((part) => part.trim()).filter(Boolean);
   if (delimiterParts.length > 1) {
-    return cleanAddressCandidate(delimiterParts[delimiterParts.length - 1]);
+    const lastPart = delimiterParts[delimiterParts.length - 1];
+    const delimiterCandidates = getAddressCandidatesFromText(lastPart);
+    if (delimiterCandidates.length) return delimiterCandidates[0];
+
+    const delimiterAddress = cleanAddressCandidate(lastPart);
+    if (scoreAddressCandidate(delimiterAddress) > 0) return delimiterAddress;
   }
 
-  const numberAddressMatch = title.match(/\b\d{1,5}(?:[\/\-.]\d{1,5})*(?:\s*[A-Za-zÀ-ỹ0-9.'-]+){1,20}$/i);
-  if (numberAddressMatch?.[0]) return cleanAddressCandidate(numberAddressMatch[0]);
+  const candidates = getAddressCandidatesFromText(title);
+  if (candidates.length) return candidates[0];
 
   return '';
 }
 
-function cleanAddressCandidate(address) {
-  return cleanText(address)
-    .replace(/^[:：,\-\|\s]+/, '')
-    .replace(/[.;,\s]+$/, '')
-    .trim();
-}
-
 function normalizeAddress(address) {
-  const cleaned = cleanAddressCandidate(address)
-    .replace(/\bQ\s*(\d+)\b/gi, 'Quận $1')
-    .replace(/\bP\s*(\d+)\b/gi, 'Phường $1')
-    .replace(/\bTP\.?\s*HCM\b/gi, 'Thành phố Hồ Chí Minh')
-    .replace(/\bHCM\b/gi, 'Thành phố Hồ Chí Minh')
-    .replace(/\s+/g, ' ')
-    .trim();
+  const cleaned = normalizeAddressAbbreviations(cleanAddressCandidate(address));
 
   if (!cleaned) return '';
   if (/việt\s*nam/i.test(cleaned)) return cleaned;
-  if (/hồ\s*chí\s*minh|sài\s*gòn|tphcm|tp\.?\s*hcm/i.test(cleaned)) return `${cleaned}, Việt Nam`;
+  if (/hồ\s*chí\s*minh|sài\s*gòn|thành\s*phố\s*hồ\s*chí\s*minh/i.test(cleaned)) return `${cleaned}, Việt Nam`;
   return `${cleaned}, Thành phố Hồ Chí Minh, Việt Nam`;
 }
 
