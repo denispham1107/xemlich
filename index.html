@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Xuất Google Calendar ra Excel</title>
+  <meta name="description" content="Website tĩnh đọc Google Calendar public bằng API Key và xuất lịch hẹn ra Excel.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">Google Calendar Public Exporter</p>
+        <h1>Xuất Google Calendar ra Excel</h1>
+        <p class="hero-text">
+          Nhập API Key và Calendar ID của lịch Google công khai/public, chọn khoảng ngày,
+          tải danh sách lịch hẹn và xuất toàn bộ dữ liệu ra file Excel.
+        </p>
+      </div>
+      <div class="hero-badge">
+        <span>HTML</span>
+        <span>CSS</span>
+        <span>JavaScript</span>
+        <span>GitHub Pages</span>
+      </div>
+    </header>
+
+    <main>
+      <section class="notice-card" aria-label="Cảnh báo quan trọng">
+        <strong>Lưu ý:</strong>
+        Cách này chỉ dùng được với Google Calendar public. Nếu lịch riêng tư, cần dùng OAuth/backend.
+      </section>
+
+      <section class="guide-grid" aria-label="Hướng dẫn nhanh">
+        <article class="guide-card"><span>1</span><p>Nhập API Key</p></article>
+        <article class="guide-card"><span>2</span><p>Nhập Calendar ID</p></article>
+        <article class="guide-card"><span>3</span><p>Chọn khoảng ngày</p></article>
+        <article class="guide-card"><span>4</span><p>Bấm Tải lịch</p></article>
+        <article class="guide-card"><span>5</span><p>Bấm Xuất Excel</p></article>
+      </section>
+
+      <section class="panel" aria-labelledby="form-title">
+        <div class="panel-heading">
+          <div>
+            <h2 id="form-title">Thông tin kết nối</h2>
+            <p>Không có API Key mặc định trong code. Bạn tự nhập trên giao diện.</p>
+          </div>
+        </div>
+
+        <form id="calendarForm" class="calendar-form">
+          <div class="form-group form-group-wide">
+            <label for="apiKey">API Key</label>
+            <input id="apiKey" name="apiKey" type="password" autocomplete="off" placeholder="Nhập Google Calendar API Key">
+          </div>
+
+          <div class="form-group form-group-wide">
+            <label for="calendarId">Calendar ID</label>
+            <input id="calendarId" name="calendarId" type="text" autocomplete="off" placeholder="Ví dụ: abc@gmail.com hoặc ...@group.calendar.google.com">
+          </div>
+
+          <div class="form-group">
+            <label for="dateFrom">Từ ngày</label>
+            <input id="dateFrom" name="dateFrom" type="date">
+          </div>
+
+          <div class="form-group">
+            <label for="dateTo">Đến ngày</label>
+            <input id="dateTo" name="dateTo" type="date">
+          </div>
+
+          <label class="checkbox-row form-group-wide" for="rememberSettings">
+            <input id="rememberSettings" name="rememberSettings" type="checkbox">
+            <span>Ghi nhớ API Key và Calendar ID trên máy này</span>
+          </label>
+
+          <div class="button-row form-group-wide">
+            <button id="loadBtn" type="submit" class="btn btn-primary">Tải lịch</button>
+            <button id="exportBtn" type="button" class="btn btn-success" disabled>Xuất Excel</button>
+            <button id="clearStorageBtn" type="button" class="btn btn-ghost">Xóa dữ liệu đã lưu</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="status-area" aria-live="polite">
+        <div id="loading" class="loading hidden">
+          <span class="spinner" aria-hidden="true"></span>
+          <span>Đang tải lịch hẹn...</span>
+        </div>
+        <div id="messageBox" class="message hidden"></div>
+      </section>
+
+      <section class="summary-grid" aria-label="Tổng kết dữ liệu">
+        <article class="summary-card">
+          <span class="summary-label">Tổng lịch hẹn</span>
+          <strong id="totalEvents">0</strong>
+        </article>
+        <article class="summary-card">
+          <span class="summary-label">Lịch cả ngày</span>
+          <strong id="allDayEvents">0</strong>
+        </article>
+        <article class="summary-card">
+          <span class="summary-label">Lịch có giờ cụ thể</span>
+          <strong id="timedEvents">0</strong>
+        </article>
+      </section>
+
+      <section class="panel" aria-labelledby="table-title">
+        <div class="panel-heading table-heading">
+          <div>
+            <h2 id="table-title">Danh sách lịch hẹn</h2>
+            <p>Dữ liệu sau khi tải sẽ hiển thị tại đây.</p>
+          </div>
+          <div class="search-wrap">
+            <label for="searchInput" class="sr-only">Tìm kiếm lịch hẹn</label>
+            <input id="searchInput" type="search" placeholder="Tìm theo tiêu đề, mô tả, địa điểm..." disabled>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>STT</th>
+                <th>Tiêu đề lịch hẹn</th>
+                <th>Ngày bắt đầu</th>
+                <th>Giờ bắt đầu</th>
+                <th>Ngày kết thúc</th>
+                <th>Giờ kết thúc</th>
+                <th>Cả ngày</th>
+                <th>Địa điểm</th>
+                <th>Mô tả</th>
+                <th>Người tạo</th>
+                <th>Trạng thái</th>
+                <th>Link Google Calendar</th>
+              </tr>
+            </thead>
+            <tbody id="eventsTableBody">
+              <tr>
+                <td colspan="12" class="empty-cell">Chưa có dữ liệu. Hãy nhập thông tin và bấm “Tải lịch”.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <script src="app.js" defer></script>
+</body>
+</html>
