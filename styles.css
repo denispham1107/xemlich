@@ -7,6 +7,8 @@
   --border: #d9e2ef;
   --primary: #2563eb;
   --primary-dark: #1d4ed8;
+  --secondary: #7c3aed;
+  --secondary-dark: #6d28d9;
   --success: #0f766e;
   --success-dark: #115e59;
   --warning-bg: #fff7ed;
@@ -51,7 +53,7 @@ a:hover {
 }
 
 .app-shell {
-  width: min(1180px, calc(100% - 32px));
+  width: min(1280px, calc(100% - 32px));
   margin: 0 auto;
   padding: 32px 0 56px;
 }
@@ -108,7 +110,7 @@ h2 {
   flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-end;
-  max-width: 260px;
+  max-width: 290px;
 }
 
 .hero-badge span {
@@ -277,6 +279,15 @@ input:focus {
   background: var(--primary-dark);
 }
 
+.btn-secondary {
+  background: var(--secondary);
+  color: #fff;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--secondary-dark);
+}
+
 .btn-success {
   background: var(--success);
   color: #fff;
@@ -352,7 +363,7 @@ input:focus {
 
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
   margin-bottom: 22px;
 }
@@ -379,7 +390,7 @@ input:focus {
 }
 
 .search-wrap {
-  width: min(420px, 100%);
+  width: min(460px, 100%);
 }
 
 .table-wrap {
@@ -391,7 +402,7 @@ input:focus {
 
 table {
   width: 100%;
-  min-width: 1120px;
+  min-width: 1900px;
   border-collapse: collapse;
   background: #fff;
 }
@@ -429,9 +440,26 @@ tr:last-child td {
   color: var(--muted);
 }
 
-.description-cell {
+.description-cell,
+.address-cell,
+.maps-status-cell {
   max-width: 320px;
   white-space: pre-wrap;
+}
+
+.maps-ok {
+  color: var(--success-dark);
+  font-weight: 750;
+}
+
+.maps-error {
+  color: var(--danger-text);
+  font-weight: 750;
+}
+
+.maps-pending {
+  color: var(--muted);
+  font-weight: 750;
 }
 
 .empty-cell {
@@ -452,7 +480,7 @@ tr:last-child td {
   border: 0;
 }
 
-@media (max-width: 920px) {
+@media (max-width: 980px) {
   .hero,
   .panel-heading,
   .table-heading {
@@ -482,7 +510,7 @@ tr:last-child td {
 
 @media (max-width: 560px) {
   .app-shell {
-    width: min(100% - 20px, 1180px);
+    width: min(100% - 20px, 1280px);
     padding-top: 16px;
   }
 
